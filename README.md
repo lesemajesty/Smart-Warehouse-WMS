@@ -1,4 +1,5 @@
 # 智慧仓储管理系统（smart-warehouse-wms）
+该项目由AI协助完成
 
 > GitHub 仓库名：`smart-warehouse-wms` · Smart Warehouse Management System (WMS)
 
