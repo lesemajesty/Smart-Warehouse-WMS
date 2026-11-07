@@ -53,6 +53,19 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 ### 1. 建库
 
+两种方式二选一。
+
+**方式 A（推荐）：恢复完整备份** —— `db/smart_warehouse.sql` 是 `mysqldump` 导出的全量文件，含建库语句、9 张表结构和当前演示数据（30 SKU / 库存 6008 / 32 入 / 28 出 / 9 用户 / 5 预警 / 106 条日志）：
+
+```powershell
+$mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
+& $mysql -h 127.0.0.1 -P 3306 -uroot -p1234 --default-character-set=utf8mb4 -e "source db/smart_warehouse.sql"
+```
+
+导入会 `DROP TABLE IF EXISTS` 再重建，重复执行结果一致；库名固定为 `smart_warehouse`，要换库名可先 `sed 's/`smart_warehouse`/新库名/g'`。
+
+**方式 B：只建空库**，表结构由 JPA 启动时自动创建（`ddl-auto=update`）：
+
 ```sql
 CREATE DATABASE smart_warehouse DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 ```
@@ -73,6 +86,8 @@ mvn spring-boot:run
 打开 <http://127.0.0.1:8080>。首次启动由 JPA 自动建表（`ddl-auto=update`）。
 
 ### 3. 导入演示数据（可选）
+
+> 已用方式 A 恢复过完整备份的话，本节可以跳过：备份里已经包含演示数据。种子脚本用于「方式 B 建空库后，从零开始逐批导入」。
 
 ```powershell
 $mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
@@ -228,6 +243,7 @@ src/main/resources/
 ├── static/js/app.js       前端交互逻辑
 ├── static/vendor/         Bootstrap / Chart.js / Lucide（本地化）
 └── application.properties
+db/smart_warehouse.sql     完整备份（建库 + 9 张表结构 + 当前演示数据）
 db/seed-demo.sql           基础演示数据
 db/seed-more-data.sql      追加 20 个 SKU / 20 入 20 出 / 5 个用户
 ```
