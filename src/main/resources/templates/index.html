@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧仓储管理系统</title>
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/app.css">
+    <script src="/vendor/chartjs/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="loginOverlay" class="login-page">
+    <div class="login-card">
+        <div class="login-brand">
+            <span class="brand-mark"><i data-lucide="warehouse"></i></span>
+            <div>
+                <div class="login-title">智慧仓储</div>
+                <div class="login-sub">WMS Console</div>
+            </div>
+        </div>
+        <div class="field">
+            <label for="loginUsername">用户名</label>
+            <input id="loginUsername" autocomplete="username" value="admin">
+        </div>
+        <div class="field">
+            <label for="loginPassword">密码</label>
+            <input id="loginPassword" type="password" autocomplete="current-password">
+        </div>
+        <div id="loginError" class="field-error"></div>
+        <button id="loginBtn" class="btn btn-primary btn-block" type="button">登录</button>
+        <div class="login-hint">admin / 123456 · zhangwei / 123456 · guest / 123456</div>
+    </div>
+</div>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <span class="brand-mark"><i data-lucide="warehouse"></i></span>
+            <span class="brand-name">智慧仓储</span>
+        </div>
+
+        <button class="sidebar-me" type="button" onclick="openUserInfo()" title="查看账号信息">
+            <span class="avatar" id="sidebarMeAvatar">A</span>
+            <span class="sidebar-me-meta">
+                <span class="sidebar-me-name" id="sidebarMeName">未登录</span>
+                <span class="sidebar-me-role" id="sidebarMeRole">—</span>
+            </span>
+            <span class="sidebar-me-dot" aria-hidden="true"></span>
+        </button>
+
+        <nav class="nav">
+            <div class="nav-group">运营</div>
+            <button class="nav-item active" type="button" data-view="dashboardView" data-title="库存仪表板">
+                <i data-lucide="layout-dashboard"></i><span>仪表板</span>
+            </button>
+            <button class="nav-item" type="button" data-view="warningView" data-title="预警管理">
+                <i data-lucide="triangle-alert"></i><span>预警管理</span>
+            </button>
+            <button class="nav-item" type="button" data-view="goodsView" data-title="商品管理">
+                <i data-lucide="package"></i><span>商品管理</span>
+            </button>
+
+            <div class="nav-group">作业</div>
+            <button class="nav-item" type="button" data-view="inboundView" data-title="入库管理">
+                <i data-lucide="arrow-down-to-line"></i><span>入库管理</span>
+            </button>
+            <button class="nav-item" type="button" data-view="outboundView" data-title="出库管理">
+                <i data-lucide="arrow-up-from-line"></i><span>出库管理</span>
+            </button>
+
+            <div class="nav-group nav-group-system">系统</div>
+            <button class="nav-item" type="button" data-view="userView" data-title="用户管理" data-perm="admin">
+                <i data-lucide="users"></i><span>用户管理</span>
+            </button>
+            <button class="nav-item warehouse-hide" type="button" data-view="statsView" data-title="库存统计">
+                <i data-lucide="chart-column"></i><span>库存统计</span>
+            </button>
+            <button class="nav-item" type="button" data-view="logView" data-title="操作日志" data-perm="admin">
+                <i data-lucide="history"></i><span>操作日志</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="sidebar-logout" type="button" onclick="logout()">
+                <i data-lucide="log-out"></i><span>退出登录</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="btn-icon mobile-only" id="sidebarToggle" type="button" aria-label="菜单">
+                    <i data-lucide="menu"></i>
+                </button>
+                <h1 id="pageTitle">库存仪表板</h1>
+            </div>
+            <button class="notice-banner" id="noticeBanner" type="button" onclick="openNoticeModal()" title="查看并处理待处理预警">
+                <i data-lucide="bell-ring"></i>
+                <span class="notice-banner-text" id="noticeText">正在加载…</span>
+                <span class="notice-compact" id="noticeCompact">—</span>
+                <i data-lucide="chevron-right" class="notice-banner-arrow"></i>
+            </button>
+        </header>
+
+        <main class="content">
+            <!-- 仪表板 -->
+            <section id="dashboardView" class="view active">
+                <div class="kpi-grid">
+                    <div class="kpi">
+                        <div class="kpi-label">总库存</div>
+                        <div class="kpi-value" id="totalStock">0</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">低库存 SKU</div>
+                        <div class="kpi-value" id="lowStockSku">0</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">本月入库</div>
+                        <div class="kpi-value" id="kpiInbound">0</div>
+                        <div class="kpi-delta" id="kpiInboundDelta">较上月 —</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">本月出库</div>
+                        <div class="kpi-value" id="kpiOutbound">0</div>
+                        <div class="kpi-delta" id="kpiOutboundDelta">较上月 —</div>
+                    </div>
+                </div>
+
+                <section class="card warehouse-only" id="warehouseQuickActions">
+                    <header class="card-head"><h2>常用操作</h2></header>
+                    <div class="card-body">
+                        <div class="quick-actions">
+                            <button class="quick-action primary" type="button" onclick="openInbound()">
+                                <i data-lucide="arrow-down-to-line"></i><span>新增入库</span>
+                            </button>
+                            <button class="quick-action" type="button" onclick="openOutbound()">
+                                <i data-lucide="arrow-up-from-line"></i><span>新增出库</span>
+                            </button>
+                            <button class="quick-action" type="button" onclick="goWarnings()">
+                                <i data-lucide="triangle-alert"></i><span>处理预警</span>
+                            </button>
+                            <button class="quick-action" type="button"
+                                    onclick="document.querySelector('[data-view=goodsView]').click()">
+                                <i data-lucide="package-search"></i><span>库存查询</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="dashboard-grid">
+                    <section class="card warehouse-hide">
+                        <header class="card-head">
+                            <h2>近 6 个月出入库趋势</h2>
+                        </header>
+                        <div class="card-body">
+                            <div class="chart-wrap">
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <header class="card-head">
+                            <h2 id="dashboardWarningTitle">预警概况</h2>
+                            <button class="btn btn-secondary btn-sm" id="manualCheckBtn" type="button" data-perm="operate">
+                                <i data-lucide="refresh-cw"></i>手动检查
+                            </button>
+                        </header>
+                        <div class="card-body">
+                            <dl class="stat-list">
+                                <div><dt>总预警</dt><dd id="totalWarningCount">0</dd></div>
+                                <div><dt>低库存</dt><dd id="lowWarningCount">0</dd></div>
+                                <div><dt>高库存</dt><dd id="highWarningCount">0</dd></div>
+                                <div><dt>未处理</dt><dd id="unprocessedCount">0</dd></div>
+                            </dl>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="charts-row warehouse-hide">
+                    <section class="card">
+                        <header class="card-head"><h2>仓库库存分布</h2></header>
+                        <div class="card-body">
+                            <div class="chart-wrap small"><canvas id="warehouseChart"></canvas></div>
+                        </div>
+                    </section>
+                    <section class="card">
+                        <header class="card-head"><h2>预警构成</h2></header>
+                        <div class="card-body">
+                            <div class="chart-wrap small"><canvas id="warningChart"></canvas></div>
+                        </div>
+                    </section>
+                    <section class="card">
+                        <header class="card-head"><h2>分类库存分布</h2></header>
+                        <div class="card-body">
+                            <div class="chart-wrap small"><canvas id="categoryChart"></canvas></div>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="card">
+                    <header class="card-head">
+                        <h2>补货建议</h2>
+                        <span class="badge bg-warning" id="replenishCount">0 项</span>
+                    </header>
+                    <div class="card-body">
+                        <div id="replenishList" class="replenish-list"></div>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <header class="card-head">
+                        <h2>预警明细</h2>
+                    </header>
+                    <div class="table-wrap">
+                        <table class="data-table table-warnings">
+                            <thead>
+                            <tr>
+                                <th>货物</th><th>编码</th><th>仓库</th><th>当前库存</th>
+                                <th>最低线</th><th>类型</th><th>状态</th><th>操作</th>
+                            </tr>
+                            </thead>
+                            <tbody id="warningTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <!-- 预警管理 -->
+            <section id="warningView" class="view">
+                <section class="card">
+                    <header class="card-head">
+                        <h2 id="warningCardTitle">全部预警</h2>
+                        <button class="btn btn-secondary btn-sm" id="manualCheckBtn2" type="button" data-perm="operate">
+                            <i data-lucide="refresh-cw"></i>手动检查
+                        </button>
+                    </header>
+                    <div class="form-hint" id="warningScopeHint"></div>
+                    <div class="filter-bar">
+                        <div class="segmented" id="warningTypeFilter">
+                            <label class="seg"><input type="radio" name="warningType" value="" checked><span>全部</span></label>
+                            <label class="seg"><input type="radio" name="warningType" value="low"><span>低库存</span></label>
+                            <label class="seg"><input type="radio" name="warningType" value="high"><span>高库存</span></label>
+                        </div>
+                        <div class="segmented" id="warningStatusFilter">
+                            <label class="seg"><input type="radio" name="warningStatus" value="" checked><span>全部</span></label>
+                            <label class="seg"><input type="radio" name="warningStatus" value="unprocessed"><span>未处理</span></label>
+                            <label class="seg"><input type="radio" name="warningStatus" value="processed"><span>已处理</span></label>
+                        </div>
+                        <div class="filter-spacer"></div>
+                        <button class="btn btn-secondary btn-sm" id="warningRefresh" type="button">
+                            <i data-lucide="refresh-cw"></i>刷新
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table table-warnings">
+                            <thead>
+                            <tr>
+                                <th>货物</th><th>编码</th><th>仓库</th><th>当前库存</th>
+                                <th>最低线</th><th>类型</th><th>状态</th><th>创建时间</th><th>操作</th>
+                            </tr>
+                            </thead>
+                            <tbody id="warningViewTableBody"></tbody>
+                        </table>
+                    </div>
+                    <footer class="table-footer">
+                        <span id="warningTotal">共 0 条</span>
+                        <div class="pager">
+                            <select id="warningPageSize">
+                                <option value="10">10 条/页</option>
+                                <option value="20">20 条/页</option>
+                                <option value="50">50 条/页</option>
+                            </select>
+                            <button id="warningPrev" class="btn btn-secondary btn-sm" type="button">上一页</button>
+                            <span id="warningPageInfo" class="pager-info">1 / 1</span>
+                            <button id="warningNext" class="btn btn-secondary btn-sm" type="button">下一页</button>
+                        </div>
+                    </footer>
+                </section>
+            </section>
+
+            <!-- 商品管理 -->
+            <section id="goodsView" class="view">
+                <section class="card">
+                    <header class="card-head">
+                        <h2>商品库存</h2>
+                        <button id="addGoodsBtn" class="btn btn-primary" type="button" data-perm="admin">
+                            <i data-lucide="plus"></i>新增商品
+                        </button>
+                    </header>
+                    <div class="filter-bar">
+                        <div class="search-field">
+                            <i data-lucide="search"></i>
+                            <input id="goodsSearch" placeholder="搜索编码或名称">
+                        </div>
+                        <div class="segmented" id="goodsWarehouseFilter"></div>
+                        <select id="goodsCategoryFilter" class="filter-select warehouse-hide">
+                            <option value="">全部分类</option>
+                        </select>
+                        <div class="filter-spacer"></div>
+                        <button class="btn btn-secondary btn-sm warehouse-hide" id="goodsExport" type="button">
+                            <i data-lucide="download"></i>导出
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="goodsRefresh" type="button">
+                            <i data-lucide="refresh-cw"></i>刷新
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table table-goods">
+                            <thead>
+                            <tr>
+                                <th>编码</th><th>名称</th><th>分类</th><th>仓库</th><th>当前库存</th>
+                                <th>最低预警线</th><th>最高预警线</th><th>操作</th><th>删除</th>
+                            </tr>
+                            </thead>
+                            <tbody id="goodsTableBody"></tbody>
+                        </table>
+                    </div>
+                    <footer class="table-footer">
+                        <span id="goodsTotal">共 0 条</span>
+                        <div class="pager">
+                            <select id="goodsPageSize">
+                                <option value="10">10 条/页</option>
+                                <option value="20">20 条/页</option>
+                                <option value="50">50 条/页</option>
+                            </select>
+                            <button id="goodsPrev" class="btn btn-secondary btn-sm" type="button">上一页</button>
+                            <span id="goodsPageInfo" class="pager-info">1 / 1</span>
+                            <button id="goodsNext" class="btn btn-secondary btn-sm" type="button">下一页</button>
+                        </div>
+                    </footer>
+                </section>
+            </section>
+
+            <!-- 入库管理 -->
+            <section id="inboundView" class="view">
+                <section class="card">
+                    <header class="card-head">
+                        <h2>入库记录</h2>
+                        <button class="btn btn-primary" id="addInboundBtn" type="button" data-bs-toggle="modal" data-bs-target="#addInboundModal" data-perm="operate">
+                            <i data-lucide="plus"></i>新增入库
+                        </button>
+                    </header>
+                    <div class="filter-bar">
+                        <div class="search-field">
+                            <i data-lucide="search"></i>
+                            <input id="inboundSearch" placeholder="搜索订单号或商品">
+                        </div>
+                        <div class="filter-spacer"></div>
+                        <button class="btn btn-secondary btn-sm warehouse-hide" id="inboundExport" type="button">
+                            <i data-lucide="download"></i>导出
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="inboundRefresh" type="button">
+                            <i data-lucide="refresh-cw"></i>刷新
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table table-inbound">
+                            <thead>
+                            <tr><th>订单号</th><th>商品名称</th><th>数量</th><th>入库时间</th><th>操作人</th></tr>
+                            </thead>
+                            <tbody id="inboundTableBody"></tbody>
+                        </table>
+                    </div>
+                    <footer class="table-footer">
+                        <span id="inboundTotal">共 0 条</span>
+                        <div class="pager">
+                            <select id="inboundPageSize">
+                                <option value="10">10 条/页</option>
+                                <option value="20">20 条/页</option>
+                                <option value="50">50 条/页</option>
+                            </select>
+                            <button id="inboundPrev" class="btn btn-secondary btn-sm" type="button">上一页</button>
+                            <span id="inboundPageInfo" class="pager-info">1 / 1</span>
+                            <button id="inboundNext" class="btn btn-secondary btn-sm" type="button">下一页</button>
+                        </div>
+                    </footer>
+                </section>
+            </section>
+
+            <!-- 出库管理 -->
+            <section id="outboundView" class="view">
+                <section class="card">
+                    <header class="card-head">
+                        <h2>出库记录</h2>
+                        <button class="btn btn-primary" id="addOutboundBtn" type="button" data-bs-toggle="modal" data-bs-target="#addOutboundModal" data-perm="operate">
+                            <i data-lucide="plus"></i>新增出库
+                        </button>
+                    </header>
+                    <div class="filter-bar">
+                        <div class="search-field">
+                            <i data-lucide="search"></i>
+                            <input id="outboundSearch" placeholder="搜索订单号或商品">
+                        </div>
+                        <div class="filter-spacer"></div>
+                        <button class="btn btn-secondary btn-sm warehouse-hide" id="outboundExport" type="button">
+                            <i data-lucide="download"></i>导出
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="outboundRefresh" type="button">
+                            <i data-lucide="refresh-cw"></i>刷新
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table table-outbound">
+                            <thead>
+                            <tr><th>订单号</th><th>商品名称</th><th>数量</th><th>出库时间</th><th>操作人</th></tr>
+                            </thead>
+                            <tbody id="outboundTableBody"></tbody>
+                        </table>
+                    </div>
+                    <footer class="table-footer">
+                        <span id="outboundTotal">共 0 条</span>
+                        <div class="pager">
+                            <select id="outboundPageSize">
+                                <option value="10">10 条/页</option>
+                                <option value="20">20 条/页</option>
+                                <option value="50">50 条/页</option>
+                            </select>
+                            <button id="outboundPrev" class="btn btn-secondary btn-sm" type="button">上一页</button>
+                            <span id="outboundPageInfo" class="pager-info">1 / 1</span>
+                            <button id="outboundNext" class="btn btn-secondary btn-sm" type="button">下一页</button>
+                        </div>
+                    </footer>
+                </section>
+            </section>
+
+            <!-- 用户管理 -->
+            <section id="userView" class="view">
+                <section class="card">
+                    <header class="card-head">
+                        <h2>系统用户</h2>
+                        <button class="btn btn-primary" id="addUserBtn" type="button" data-bs-toggle="modal" data-bs-target="#addUserModal" data-perm="admin">
+                            <i data-lucide="user-plus"></i>新增用户
+                        </button>
+                    </header>
+                    <div class="filter-bar">
+                        <div class="search-field">
+                            <i data-lucide="search"></i>
+                            <input id="userSearch" placeholder="搜索用户名">
+                        </div>
+                        <div class="filter-spacer"></div>
+                        <button class="btn btn-secondary btn-sm" id="userRefresh" type="button">
+                            <i data-lucide="refresh-cw"></i>刷新
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table table-users">
+                            <thead>
+                            <tr><th>ID</th><th>用户名</th><th>角色</th><th>绑定仓库</th><th>创建时间</th><th>操作</th></tr>
+                            </thead>
+                            <tbody id="userTableBody"></tbody>
+                        </table>
+                    </div>
+                    <footer class="table-footer">
+                        <span id="userTotal">共 0 条</span>
+                        <div class="pager">
+                            <select id="userPageSize">
+                                <option value="10">10 条/页</option>
+                                <option value="20">20 条/页</option>
+                                <option value="50">50 条/页</option>
+                            </select>
+                            <button id="userPrev" class="btn btn-secondary btn-sm" type="button">上一页</button>
+                            <span id="userPageInfo" class="pager-info">1 / 1</span>
+                            <button id="userNext" class="btn btn-secondary btn-sm" type="button">下一页</button>
+                        </div>
+                    </footer>
+                </section>
+            </section>
+
+            <!-- 库存统计 -->
+            <section id="statsView" class="view">
+                <div class="kpi-grid">
+                    <div class="kpi">
+                        <div class="kpi-label">总库存量</div>
+                        <div class="kpi-value" id="statsTotalStock">0</div>
+                        <div class="kpi-delta" id="statsStockScope">全仓</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">商品种类数</div>
+                        <div class="kpi-value" id="statsTotalGoods">0</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">低库存 SKU</div>
+                        <div class="kpi-value" id="statsLowStock">0</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">本月净增</div>
+                        <div class="kpi-value" id="statsNetChange">0</div>
+                        <div class="kpi-delta" id="statsNetHint">入库 - 出库</div>
+                    </div>
+                </div>
+
+                <section class="card">
+                    <header class="card-head">
+                        <h2>库存与本月出入库</h2>
+                        <span class="form-hint" id="statsChartScope"></span>
+                    </header>
+                    <div class="card-body">
+                        <div class="chart-wrap tall"><canvas id="statsChart"></canvas></div>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <header class="card-head">
+                        <h2>月度出入库统计</h2>
+                        <span class="form-hint" id="statsTrendScope">近 6 个月</span>
+                    </header>
+                    <div class="table-wrap">
+                        <table class="data-table table-stats-months">
+                            <thead>
+                            <tr><th>月份</th><th>入库</th><th>出库</th><th>净增</th><th>出库 / 入库</th></tr>
+                            </thead>
+                            <tbody id="statsMonthBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <div class="stats-grid">
+                    <section class="card">
+                        <header class="card-head"><h2>仓库库存汇总</h2></header>
+                        <div class="table-wrap">
+                            <table class="data-table table-stats-warehouse">
+                                <thead>
+                                <tr><th>仓库</th><th>SKU</th><th>库存</th><th>占比</th><th>低库存</th></tr>
+                                </thead>
+                                <tbody id="statsWarehouseBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="card">
+                        <header class="card-head"><h2>分类库存汇总</h2></header>
+                        <div class="table-wrap">
+                            <table class="data-table table-stats-category">
+                                <thead>
+                                <tr><th>分类</th><th>SKU</th><th>库存</th><th>占比</th><th>低库存</th></tr>
+                                </thead>
+                                <tbody id="statsCategoryBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="card">
+                    <header class="card-head">
+                        <h2>库存 Top 10</h2>
+                        <span class="form-hint">按当前库存降序</span>
+                    </header>
+                    <div class="table-wrap">
+                        <table class="data-table table-stats-top">
+                            <thead>
+                            <tr><th>#</th><th>编码</th><th>名称</th><th>分类</th><th>仓库</th><th>当前库存</th><th>状态</th></tr>
+                            </thead>
+                            <tbody id="statsTopBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <header class="card-head">
+                        <h2>低库存清单</h2>
+                        <span class="badge bg-warning" id="statsLowCount">0 项</span>
+                    </header>
+                    <div class="table-wrap">
+                        <table class="data-table table-stats-low">
+                            <thead>
+                            <tr><th>编码</th><th>名称</th><th>仓库</th><th>当前</th><th>最低线</th><th>缺口</th></tr>
+                            </thead>
+                            <tbody id="statsLowBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <!-- 操作日志 -->
+            <section id="logView" class="view">
+                <section class="card">
+                    <header class="card-head">
+                        <h2>操作日志</h2>
+                        <div class="head-actions">
+                            <button class="btn btn-secondary btn-sm" id="logExport" type="button">
+                                <i data-lucide="download"></i>导出
+                            </button>
+                            <button class="btn btn-secondary btn-sm" id="logRefresh" type="button">
+                                <i data-lucide="refresh-cw"></i>刷新
+                            </button>
+                        </div>
+                    </header>
+                    <div class="filter-bar">
+                        <div class="search-field">
+                            <i data-lucide="search"></i>
+                            <input id="logSearch" placeholder="搜索用户、动作或详情">
+                        </div>
+                        <select id="logActionFilter" class="filter-select">
+                            <option value="">全部动作</option>
+                        </select>
+                        <div class="filter-spacer"></div>
+                        <span class="form-hint">最近 200 条</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table table-logs">
+                            <thead>
+                            <tr>
+                                <th>时间</th><th>用户</th><th>角色</th><th>动作</th>
+                                <th>对象</th><th>详情</th><th>仓库</th><th>IP</th>
+                            </tr>
+                            </thead>
+                            <tbody id="logTableBody"></tbody>
+                        </table>
+                    </div>
+                    <footer class="table-footer">
+                        <span id="logTotal">共 0 条</span>
+                        <div class="pager">
+                            <select id="logPageSize">
+                                <option value="10">10 条/页</option>
+                                <option value="20" selected>20 条/页</option>
+                                <option value="50">50 条/页</option>
+                            </select>
+                            <button id="logPrev" class="btn btn-secondary btn-sm" type="button">上一页</button>
+                            <span id="logPageInfo" class="pager-info">1 / 1</span>
+                            <button id="logNext" class="btn btn-secondary btn-sm" type="button">下一页</button>
+                        </div>
+                    </footer>
+                </section>
+            </section>
+        </main>
+    </div>
+</div>
+
+<!-- ==================== 弹窗 ==================== -->
+<div class="modal fade" id="addGoodsModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增商品</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="field">
+                    <label for="goodsCode">货物编码</label>
+                    <input id="goodsCode" placeholder="如 G001">
+                </div>
+                <div class="field">
+                    <label for="goodsName">货物名称</label>
+                    <input id="goodsName" placeholder="如 无线鼠标">
+                </div>
+                <div class="field">
+                    <label for="goodsCategory">分类</label>
+                    <select id="goodsCategory">
+                        <option value="数码配件">数码配件</option>
+                        <option value="仓储设备">仓储设备</option>
+                        <option value="包装耗材">包装耗材</option>
+                        <option value="冷链物资">冷链物资</option>
+                        <option value="劳保用品">劳保用品</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="goodsWarehouse">仓库</label>
+                    <input id="goodsWarehouse" placeholder="如 中心仓库">
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="goodsStock">当前库存</label>
+                        <input id="goodsStock" type="number" value="0">
+                    </div>
+                    <div class="field">
+                        <label for="goodsMinStock">最低预警线</label>
+                        <input id="goodsMinStock" type="number" value="50">
+                    </div>
+                    <div class="field">
+                        <label for="goodsMaxStock">最高预警线</label>
+                        <input id="goodsMaxStock" type="number" value="200">
+                    </div>
+                </div>
+                <div id="goodsError" class="field-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" type="button" id="saveGoodsBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addInboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增入库</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-hint" id="inboundWarehouseHint"></div>
+                <div class="field">
+                    <label for="inboundGoodsId">商品</label>
+                    <select id="inboundGoodsId"></select>
+                </div>
+                <div class="field">
+                    <label for="inboundQty">数量</label>
+                    <input id="inboundQty" type="number" min="1" placeholder="请输入数量">
+                </div>
+                <div id="inboundError" class="field-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" type="button" id="confirmInboundBtn">确认入库</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addOutboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增出库</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-hint" id="outboundWarehouseHint"></div>
+                <div class="field">
+                    <label for="outboundGoodsId">商品</label>
+                    <select id="outboundGoodsId"></select>
+                </div>
+                <div class="field">
+                    <label for="outboundQty">数量</label>
+                    <input id="outboundQty" type="number" min="1" placeholder="请输入数量">
+                </div>
+                <div id="outboundError" class="field-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" type="button" id="confirmOutboundBtn">确认出库</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="field">
+                    <label for="userName">用户名</label>
+                    <input id="userName" placeholder="请输入用户名">
+                </div>
+                <div class="field">
+                    <label>角色</label>
+                    <div class="radio-group">
+                        <label class="radio-option"><input type="radio" name="userRole" value="WAREHOUSE" checked>仓库员</label>
+                        <label class="radio-option"><input type="radio" name="userRole" value="ADMIN">管理员</label>
+                        <label class="radio-option"><input type="radio" name="userRole" value="VIEWER">只读</label>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="userWarehouse">绑定仓库</label>
+                    <select id="userWarehouse"></select>
+                    <div class="form-hint" id="userWarehouseHint">仓库员必须绑定一个仓库；管理员和只读不绑定。</div>
+                </div>
+                <div class="form-hint">新用户初始密码为 123456，首次登录后可自行修改。</div>
+                <div id="userError" class="field-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" type="button" id="confirmAddUserBtn">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bindWarehouseModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">绑定仓库</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="field">
+                    <label>用户</label>
+                    <div id="bindUsername" class="form-static"></div>
+                </div>
+                <div class="field">
+                    <label for="bindWarehouse">仓库</label>
+                    <select id="bindWarehouse"></select>
+                    <div class="form-hint">一名仓库员只能绑定一个仓库，保存后立即生效。</div>
+                </div>
+                <div id="bindWarehouseError" class="field-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" type="button" id="confirmBindBtn">保存绑定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">账号信息</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="user-info-head">
+                    <span class="avatar avatar-lg" id="userInfoAvatar">A</span>
+                    <div>
+                        <div class="user-info-name" id="userInfoName">—</div>
+                        <div class="user-info-sub" id="userInfoRole">—</div>
+                    </div>
+                </div>
+                <dl class="info-list">
+                    <div><dt>账号 ID</dt><dd id="userInfoId">—</dd></div>
+                    <div><dt>角色</dt><dd id="userInfoRoleText">—</dd></div>
+                    <div><dt>绑定仓库</dt><dd id="userInfoWarehouse">—</dd></div>
+                    <div><dt>数据范围</dt><dd id="userInfoScope">—</dd></div>
+                    <div><dt>本次登录</dt><dd id="userInfoLoginTime">—</dd></div>
+                    <div><dt>可用功能</dt><dd id="userInfoPermissions">—</dd></div>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="userInfoPasswordBtn" type="button">修改密码</button>
+                <button class="btn btn-secondary btn-danger-text" id="userInfoLogoutBtn" type="button">退出登录</button>
+                <button class="btn btn-primary" type="button" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">修改密码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="field">
+                    <label for="oldPassword">当前密码</label>
+                    <input id="oldPassword" type="password" autocomplete="current-password">
+                </div>
+                <div class="field">
+                    <label for="newPassword">新密码</label>
+                    <input id="newPassword" type="password" autocomplete="new-password" placeholder="至少 6 位">
+                </div>
+                <div class="field">
+                    <label for="confirmPassword">确认新密码</label>
+                    <input id="confirmPassword" type="password" autocomplete="new-password">
+                </div>
+                <div id="passwordError" class="field-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" type="button" id="savePasswordBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">重置密码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <p class="confirm-message" style="margin-bottom:16px">
+                    为 <strong id="resetUsername"></strong> 设置新密码，保存后旧密码立即失效。
+                </p>
+                <div class="field">
+                    <label for="resetNewPassword">新密码</label>
+                    <input id="resetNewPassword" type="password" autocomplete="new-password" placeholder="至少 6 位">
+                </div>
+                <div id="resetPasswordError" class="field-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" type="button" id="confirmResetPasswordBtn">重置密码</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="noticeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">待处理预警</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <p class="notice-summary" id="noticeModalSummary">正在加载…</p>
+                <div class="notice-list" id="noticeList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" onclick="goNoticeAll()">查看全部预警</button>
+                <button class="btn btn-primary" type="button" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmDialog" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog confirm-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmTitle">确认操作</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <p class="confirm-message" id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-danger" type="button" id="confirmOk">彻底删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast" role="status"></div>
+
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/lucide/lucide.min.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
